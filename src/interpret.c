@@ -503,7 +503,15 @@ Expression *Expression::ctfeInterpret()
     if (op == TOKsymoff)
         return this;
     if (op == TOKcast && ((CastExp *)this)->e1->op == TOKsymoff)
-       return e;
+        return e;
+    // Don't need to worry about casting to mutable
+    if (op == TOKstring)
+        return e;
+
+    // TODO: These cases where symbols are acceptable should be
+    // handled differently to the case where we require a value.
+    if (op == TOKimport || op == TOKtype)
+        return this;
 
     // In all other cases, run the interpreter
     e = e->interpret(NULL);
