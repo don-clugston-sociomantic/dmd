@@ -1986,7 +1986,7 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf)
 
             if (sf)
             {
-                sf = new CompoundStatement(fensure->loc, s2, sf);
+                sf = new CompoundStatement(sf->loc, s2, sf);
             }
             else
                 sf = s2;
