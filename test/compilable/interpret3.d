@@ -795,6 +795,17 @@ auto bug5852(const(string) s) {
 
 static assert(bug5852("abc")==3);
 
+bool bug8659()
+{
+    string r =  ['x', 'q'];
+    dchar c = 'ü';
+    r ~= c;
+    assert(r.length == 4);
+    return true;
+}
+
+static assert(bug8659());
+
 // 7217
 
 struct S7217 { int[] arr; }

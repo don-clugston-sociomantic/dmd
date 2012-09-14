@@ -979,7 +979,7 @@ Expression *ctfeCat(Type *type, Expression *e1, Expression *e2)
     Type *t2 = e2->type->toBasetype();
     Expression *e;
     if (e2->op == TOKstring && e1->op == TOKarrayliteral &&
-        t1->nextOf()->isintegral())
+        t1->isString())
     {
         // [chars] ~ string => string (only valid for CTFE)
         StringExp *es1 = (StringExp *)e2;
@@ -1002,13 +1002,14 @@ Expression *ctfeCat(Type *type, Expression *e1, Expression *e2)
 
         StringExp *es = new StringExp(loc, s, len);
         es->sz = sz;
-        es->committed = 0;
+        es->committed = true;
+        es->ownedByCtfe = true;
         es->type = type;
         e = es;
         return e;
     }
     else if (e1->op == TOKstring && e2->op == TOKarrayliteral &&
-        t2->nextOf()->isintegral())
+        t2->isString())
     {
         // string ~ [chars] => string (only valid for CTFE)
         // Concatenate the strings
@@ -1032,10 +1033,36 @@ Expression *ctfeCat(Type *type, Expression *e1, Expression *e2)
 
         StringExp *es = new StringExp(loc, s, len);
         es->sz = sz;
-        es->committed = 0; //es1->committed;
+        es->committed = true;
+        es->ownedByCtfe = true;
         es->type = type;
         e = es;
         return e;
+    }
+    else if (e1->op == TOKarrayliteral && t1->isString() && e2->op == TOKint64
+        && t1->nextOf()->size() < e2->type->size())
+    {
+        // [chars] ~= wchar => string (only valid for CTFE)
+        ArrayLiteralExp *ae = (ArrayLiteralExp *)e1;
+        size_t arrlen = ae->elements->dim;
+        int sz = t1->nextOf()->size();
+
+        dinteger_t v = e2->toInteger();
+        size_t charlen = utf_codeLength(sz, v);
+
+        unsigned char *s = (unsigned char *)mem.malloc(charlen + sz * (arrlen + 1));
+
+        StringExp *es = new StringExp(loc, s, arrlen + charlen);
+        es->sz = sz;
+        es->committed = true;
+        es->type = type;
+        es->ownedByCtfe = true;
+        sliceAssignStringFromArrayLiteral(es, ae, 0);
+        utf_encode(sz, s + (sz * arrlen), v);
+
+        // Add terminating 0
+        memset(s + charlen + arrlen * sz, 0, sz);
+        return es;
     }
     return Cat(type, e1, e2);
 }
